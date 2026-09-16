@@ -24,6 +24,14 @@ The production build is generated in `dist/` and can be served by any static web
 
 Pushing to `master` runs `.github/workflows/deploy.yml`, which installs dependencies, builds the game, and deploys `dist/` to GitHub Pages. The repository Pages source is **GitHub Actions**. Vite uses `/aot/` as its base path for assets and navigation.
 
+To manually deploy the latest commit already pushed to `master`:
+
+```sh
+npm run deploy
+```
+
+This requests a GitHub Actions deployment and prints the link to follow its progress. Commit and push local changes first; the command does not upload uncommitted files. Authentication uses `GH_TOKEN`, `GITHUB_TOKEN`, or your existing GitHub HTTPS credential from Git's credential helper. The token needs Actions write access to this repository. SSH authentication alone cannot trigger the GitHub API.
+
 ## Controls
 
 | Input | Action |

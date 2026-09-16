@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
+    "deploy": "node tools/deploy-pages.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "models:build": "node tools/build-models.mjs",
     "models:check": "node tools/validate-models.mjs",
