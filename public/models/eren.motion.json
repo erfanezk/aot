@@ -1,0 +1,23 @@
+{
+  "duration": 1.1,
+  "distance": 1.3,
+  "fps": 60,
+  "forward": "glTF +Z; gameplay -Z",
+  "inPlace": "eren_walk_in_place",
+  "rootMotion": "eren_walk_root_motion",
+  "stanceEnd": 0.62,
+  "flatContact": [
+    0.12,
+    0.46
+  ],
+  "sprint": {
+    "clip": "eren_run",
+    "duration": 0.6,
+    "distance": 4.6,
+    "flatContact": [
+      0.04,
+      0.15
+    ]
+  },
+  "maxBakedAnkleError": 3.8743019104003906e-07
+}

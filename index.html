@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#171d1b" />
+    <meta name="description" content="A playable 3D Attack on Titan fan game. Defend Trost with ODM gear and unleash the Attack Titan." />
+    <title>Wings of Freedom — Attack on Titan</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23d8b981' d='M32 5 9 17v23l23 19 23-19V17z'/%3E%3Cpath fill='%232a3833' d='m17 20 13 7v23L17 37zm30 0-13 7v23l13-13z'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <canvas id="game" aria-label="3D game world"></canvas>
+    <div class="vignette"></div><div class="grain"></div>
+    <div id="loading"><div class="loading-emblem">翼</div><p>PREPARING THE EXPEDITION</p><span>Building Trost District…</span></div>
+    <header class="masthead">
+      <a class="brand" href="./" aria-label="Wings of Freedom home"><svg viewBox="0 0 44 52" aria-hidden="true"><path d="M22 2 3 10v25l19 15 19-15V10Z"/><path d="m9 12 11 8v22L9 32Zm26 0-11 8v22l11-10Z"/><path d="m10 17 10 7m-10 0 10 7m-10 0 10 7m15-21-11 7m11 0-11 7m11 0-11 7"/></svg><span>SURVEY<br/>CORPS</span></a>
+      <div class="header-center"><i></i> WALL ROSE <span>/</span> TROST DISTRICT</div>
+      <div class="header-actions"><button id="audio-button" class="icon-button" aria-label="Enable music and sound" aria-pressed="false" aria-controls="background-music" title="Toggle Attack on Titan music and sound">♪<span id="audio-label">SOUND OFF</span></button><button id="help-button" class="icon-button" aria-label="Show field manual">?<span>FIELD MANUAL</span></button></div>
+    </header>
+    <audio id="background-music" src="/audio/_attack_on%20titan.mp3" loop preload="none"></audio>
+    <div id="menu-portrait" aria-hidden="true"><img src="/images/eren-menu.png" alt="" fetchpriority="high" /></div>
+    <main id="menu">
+      <div class="eyebrow">ATTACK ON TITAN</div>
+      <h1>WINGS OF<br/><em>FREEDOM</em></h1>
+      <p class="intro">Defend Trost. Become a Titan.</p>
+      <button id="deploy" class="primary-button"><span>PLAY</span><span class="arrow">↗</span></button>
+      <a class="menu-studio" href="%BASE_URL%characters.html">Character studio <span>↗</span></a>
+    </main>
+    <footer id="menu-footer"><span>TROST DISTRICT <b> / </b> WALL ROSE</span><p>UNOFFICIAL FAN GAME</p></footer>
+    <section id="hud" hidden>
+      <div class="objective"><span class="label">OPERATION 01</span><h2>Reclaim Trost</h2><p>Eliminate the Titans inside the walls.</p><div class="objective-count"><i></i><strong id="kill-count">0 / 6</strong><span>TITANS ELIMINATED</span></div></div>
+      <div id="compass"><span>W</span><span>·</span><span>NW</span><b>│</b><span id="heading">N</span><b>│</b><span>NE</span><span>·</span><span>E</span></div>
+      <div id="crosshair"><i></i><b></b></div><div id="target-label"></div>
+      <div id="notification" role="status"></div>
+      <div class="player-panel"><div class="player-id"><div class="portrait">E</div><div><small>SURVEY CORPS · SOLDIER</small><h3 id="form-name">EREN YEAGER</h3></div><span id="form-badge">HUMAN</span></div><div class="meter-row"><span>HEALTH</span><div class="meter"><i id="health-bar"></i></div><b id="health-value">100</b></div><div class="meter-row"><span>ODM GAS</span><div class="meter gas"><i id="gas-bar"></i></div><b id="gas-value">100</b></div><div class="transformation"><span class="key">T</span><div><span id="transform-label">TITAN TRANSFORMATION</span><div class="meter titan"><i id="titan-bar"></i></div></div><b id="titan-value">READY</b></div></div>
+      <div class="minimap-panel"><div><span>TROST DISTRICT</span><i id="remaining-label">6 HOSTILES</i></div><canvas id="minimap" width="210" height="180" aria-label="Minimap showing player and Titans"></canvas><div class="map-key"><span><i></i> YOU</span><span><i></i> TITAN</span><span><i></i> SUPPLY</span></div></div>
+      <div class="quick-controls"><span><kbd>W A S D</kbd> Move</span><span><kbd>SPACE</kbd> Jump</span><span><kbd>E</kbd> Grapple</span><span><kbd>CLICK</kbd> Attack</span><span><kbd>T</kbd> Transform</span><span><kbd>ESC</kbd> Pause</span></div>
+      <div id="speed"><b>00</b><span>KM/H</span></div><div id="damage-flash"></div><div id="transform-flash"></div>
+    </section>
+    <div id="pause" class="overlay" hidden><div class="modal pause-modal"><span class="label">TAKE A BREATH, SOLDIER</span><h2 id="pause-title">The battle can wait.</h2><p id="pause-copy">Your expedition is paused.</p><button id="resume" class="primary-button">RETURN TO BATTLE <span>↗</span></button><button id="restart" class="secondary-button">RESTART EXPEDITION</button><button id="return-menu" class="text-button">Return to title</button></div></div>
+    <div id="manual" class="overlay" hidden><div class="modal manual-modal"><button id="close-manual" class="close-button" aria-label="Close field manual">×</button><span class="label">SURVEY CORPS / TRAINING DIVISION</span><h2>Your field manual.</h2><p>Stay above the streets. Strike the nape. Keep moving.</p><div class="manual-grid"><div><kbd>W A S D</kbd><span>Move in the direction of the camera</span></div><div><kbd>MOUSE / ← →</kbd><span>Look around / turn camera</span></div><div><kbd>SHIFT</kbd><span>Sprint or boost while grappling</span></div><div><kbd>SPACE</kbd><span>Jump · double jump with ODM gas</span></div><div><kbd>E / RIGHT CLICK</kbd><span>Hold to grapple toward your aim</span></div><div><kbd>CLICK / F</kbd><span>Slash · aim near a Titan to strike its nape</span></div><div><kbd>T</kbd><span>Become the Attack Titan / revert</span></div><div><kbd>R</kbd><span>Refill gas and health near green supplies</span></div><div><kbd>ESC / P</kbd><span>Pause the expedition</span></div></div><div class="manual-note"><strong>THE POWER WITHIN</strong><p>Start with a full transformation charge. Titan form lasts 45 seconds. Punch nearby Titans to defeat them. Human nape kills restore charge. Supply stations restore health, gas, and charge.</p></div><p><a href="%BASE_URL%characters.html" style="color:#d9bb81">Inspect the Blender character models ↗</a></p><p class="desktop-note">Desktop keyboard and mouse recommended. Click the battlefield to capture your mouse; Escape releases it.</p></div></div>
+    <div id="fatal" class="overlay" hidden><div class="modal"><h2>Unable to enter Trost.</h2><p id="fatal-message"></p><button onclick="location.reload()" class="primary-button">TRY AGAIN ↗</button></div></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

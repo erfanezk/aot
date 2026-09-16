@@ -1,0 +1,55 @@
+{
+  "generator": "Blender 5.2.1 LTS",
+  "characters": {
+    "eren": {
+      "triangles": 53976,
+      "meshes": 19,
+      "bones": 39,
+      "bytes": 13132752,
+      "source": "eren.blend",
+      "animations": [
+        "eren_attack",
+        "eren_idle",
+        "eren_jump",
+        "eren_land",
+        "eren_odm",
+        "eren_run",
+        "eren_walk",
+        "eren_walk_in_place",
+        "eren_walk_root_motion"
+      ]
+    },
+    "attack-titan": {
+      "triangles": 55997,
+      "meshes": 10,
+      "bones": 38,
+      "bytes": 6355232,
+      "source": "attack-titan.blend",
+      "animations": [
+        "attack-titan_attack",
+        "attack-titan_idle",
+        "attack-titan_jump",
+        "attack-titan_land",
+        "attack-titan_odm",
+        "attack-titan_run",
+        "attack-titan_walk"
+      ]
+    },
+    "pure-titan": {
+      "triangles": 39998,
+      "meshes": 10,
+      "bones": 38,
+      "bytes": 5663312,
+      "source": "pure-titan.blend",
+      "animations": [
+        "pure-titan_attack",
+        "pure-titan_idle",
+        "pure-titan_jump",
+        "pure-titan_land",
+        "pure-titan_odm",
+        "pure-titan_run",
+        "pure-titan_walk"
+      ]
+    }
+  }
+}
