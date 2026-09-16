@@ -4,6 +4,7 @@ import { WALK, RUN } from './human-walk.js';
 import {updateFootContacts} from './foot-ik.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
+import { serviceWorkerReady } from './register-sw.js';
 
 const assets = new Map();
 const bindRotations = new WeakMap();
@@ -18,6 +19,7 @@ let loading;
 /** Load the actual Blender exports once; instances share geometry and textures. */
 export function loadCharacterAssets(onProgress = () => {}) {
   loading ||= (async () => {
+    await serviceWorkerReady;
     const loader = new GLTFLoader();
     let loaded = 0;
     await Promise.all(names.map(async name => {
