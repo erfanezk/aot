@@ -357,7 +357,6 @@ function updatePlayer(dt) {
   move.addScaledVector(forward, touchControls.state.y).addScaledVector(right, touchControls.state.x);
   // Every movement input sprints, including light joystick input past its dead zone.
   if (move.lengthSq() > 0) move.normalize();
-  const boost = keys.has('ShiftLeft') || keys.has('ShiftRight') || touchControls.state.boost;
   const speed = isTitan ? 23 : 8;
   const previous = player.position.clone();
   if (player.strike) {
@@ -370,8 +369,8 @@ function updatePlayer(dt) {
       if (player.grapple) {
         const direction = player.grapple.point.clone().sub(player.position), distance = direction.length();
         if (distance > 2.7) {
-          const pull = direction.normalize().multiplyScalar(boost ? 47 : 35); player.velocity.lerp(pull, 1 - Math.exp(-dt * 6)); player.velocity.addScaledVector(move, dt * 20);
-          player.grounded = false; player.gas = Math.max(0, player.gas - dt * (boost ? 10 : 6));
+          const pull = direction.normalize().multiplyScalar(47); player.velocity.lerp(pull, 1 - Math.exp(-dt * 6)); player.velocity.addScaledVector(move, dt * 20);
+          player.grounded = false; player.gas = Math.max(0, player.gas - dt * 10);
           if (Math.random() < .5) burst(player.position, 0xd8e1da, 2, 2, .4);
         } else { player.velocity.multiplyScalar(.6); player.grapple = null; }
       }
@@ -551,7 +550,7 @@ renderer.setAnimationLoop(frame);
 $('loading').style.opacity = '0'; setTimeout(() => $('loading').hidden = true, 700);
 
 // A read-only snapshot for smoke tests and browser diagnostics.
-window.getGameState = () => ({ mode, input: { touch: touchDevice, move: { x: +touchControls.state.x.toFixed(2), y: +touchControls.state.y.toFixed(2) }, boost: touchControls.state.boost, yaw: +yaw.toFixed(3), pitch: +pitch.toFixed(3) }, attackTime: +player.attackTime.toFixed(2), form: player.form, health: player.health, gas: Math.round(player.gas), energy: Math.round(player.energy), kills, position: player.position.toArray().map(v => +v.toFixed(2)), velocity: player.velocity.toArray().map(v => +v.toFixed(2)), grapple: !!player.grapple, grounded: player.grounded, elapsed: Math.round(elapsed), titans: titans.filter(t => t.alive).map(t => ({ id: t.id, hp: t.hp, position: t.group.position.toArray().map(v => +v.toFixed(1)) })), world: { buildings: world.buildings.length, diameter: world.wallRadius * 2 }, render: { backend: renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl2', frameMs: +averageFrame.toFixed(1), pixelRatio: renderer.getPixelRatio(), shadowSize: sun.shadow.mapSize.x, calls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles } });
+window.getGameState = () => ({ mode, input: { touch: touchDevice, move: { x: +touchControls.state.x.toFixed(2), y: +touchControls.state.y.toFixed(2) }, yaw: +yaw.toFixed(3), pitch: +pitch.toFixed(3) }, attackTime: +player.attackTime.toFixed(2), form: player.form, health: player.health, gas: Math.round(player.gas), energy: Math.round(player.energy), kills, position: player.position.toArray().map(v => +v.toFixed(2)), velocity: player.velocity.toArray().map(v => +v.toFixed(2)), grapple: !!player.grapple, grounded: player.grounded, elapsed: Math.round(elapsed), titans: titans.filter(t => t.alive).map(t => ({ id: t.id, hp: t.hp, position: t.group.position.toArray().map(v => +v.toFixed(1)) })), world: { buildings: world.buildings.length, diameter: world.wallRadius * 2 }, render: { backend: renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl2', frameMs: +averageFrame.toFixed(1), pixelRatio: renderer.getPixelRatio(), shadowSize: sun.shadow.mapSize.x, calls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles } });
 
 // Development-only rig diagnostics for repeatable movement regression checks.
 if(import.meta.env.DEV)window.__motionDebug={human,scene,camera,renderer,player};

@@ -5,8 +5,7 @@ export function createTouchControls({ canvas, look, jump, attack, transform, res
   const root = document.getElementById('touch-controls');
   const stick = document.getElementById('move-stick');
   const thumb = document.getElementById('move-thumb');
-  let stickBoost = false, buttonBoost = false;
-  const state = { x: 0, y: 0, get boost() { return stickBoost || buttonBoost; } };
+  const state = { x: 0, y: 0 };
   const pointers = new Map();
   let enabled = false, movePointer = null, lookPointer = null, previousLook;
 
@@ -19,10 +18,7 @@ export function createTouchControls({ canvas, look, jump, attack, transform, res
     const strength = Math.max(0, Math.min(1, length / radius) - .12) / .88;
     state.x = length ? dx / length * strength : 0;
     state.y = length ? -dy / length * strength : 0;
-    // Boost grappling at the rim so movement + camera control only needs two thumbs.
-    stickBoost = length / radius >= .92;
-    stick.classList.toggle('sprinting', stickBoost);
-    thumb.style.transform = `translate(${dx * scale}px, ${dy * scale}px)`;
+    thumb.style.transform = `translate(${dx * scale}px, ${dy * scale}px`;
   }
 
   function release(id) {
@@ -30,11 +26,9 @@ export function createTouchControls({ canvas, look, jump, attack, transform, res
     if (!held) return;
     pointers.delete(id);
     if (id === movePointer) {
-      movePointer = null; state.x = state.y = 0; stickBoost = false; thumb.style.transform = '';
-      stick.classList.remove('sprinting');
+      movePointer = null; state.x = state.y = 0; thumb.style.transform = '';
     }
     if (id === lookPointer) lookPointer = null;
-    if (held.action === 'boost') buttonBoost = false;
     if (held.action === 'grapple') grapple(false);
     held.element.classList.remove('pressed');
     if (held.element.hasPointerCapture(id)) held.element.releasePointerCapture(id);
@@ -82,8 +76,7 @@ export function createTouchControls({ canvas, look, jump, attack, transform, res
     button.addEventListener('pointerdown', event => {
       if (!enabled || button.disabled || [...pointers.values()].some(held => held.element === button)) return;
       capture(button, event, action);
-      if (action === 'boost') buttonBoost = true;
-      else if (action === 'grapple') { beginLook(event); grapple(true); }
+      if (action === 'grapple') { beginLook(event); grapple(true); }
       else actions[action]();
     });
     if (action === 'grapple') button.addEventListener('pointermove', updateLook);

@@ -15,7 +15,7 @@ On mobile, drag the **left stick** to sprint automatically. **Drag the world** t
 Desktop controls:
 
 - **WASD** — sprint · **Mouse** — look
-- **Space** — jump · **Shift** — boost while grappling
+- **Space** — jump
 - **E / Right click** — grapple
 - **F / Left click** — attack
 - **T** — unleash your inner Titan
