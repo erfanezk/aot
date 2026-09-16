@@ -5,6 +5,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createWorld, seededRandom } from './world.js';
 import { loadCharacterAssets, createCharacter, animateCharacter } from './characters.js';
 import { createPointSprites } from './point-sprites.js';
+import { createTouchControls, touchDevice } from './touch-controls.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
@@ -13,14 +14,14 @@ backgroundMusic.volume = .4;
 let renderer;
 try {
   $('loading').querySelector('span').textContent = 'Initializing graphics…';
-  renderer = new THREE.WebGPURenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  renderer = new THREE.WebGPURenderer({ canvas, antialias: !touchDevice, powerPreference: 'high-performance' });
   await renderer.init();
 } catch (error) {
   $('loading').hidden = true; $('fatal').hidden = false;
   $('fatal-message').textContent = 'Graphics could not start. Enable hardware acceleration and open the game on localhost or HTTPS in a browser with WebGPU or WebGL 2 support.';
   throw error;
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25));
+renderer.setPixelRatio(Math.min(devicePixelRatio, touchDevice ? 1 : 1.25));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.12;
@@ -42,7 +43,7 @@ const sunPosition = new THREE.Vector3(-.65, .36, -.48).normalize();
 sky.sunPosition.value.copy(sunPosition);
 scene.add(new THREE.HemisphereLight(0xc7dbdf, 0x6b614e, 2));
 const sun = new THREE.DirectionalLight(0xffdfaa, 3.6); sun.position.copy(sunPosition).multiplyScalar(180);
-sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+sun.castShadow = true; sun.shadow.mapSize.setScalar(touchDevice ? 512 : 1024);
 sun.shadow.camera.left = -95; sun.shadow.camera.right = 95; sun.shadow.camera.top = 95; sun.shadow.camera.bottom = -95;
 sun.shadow.camera.near = 1; sun.shadow.camera.far = 430; sun.shadow.bias = -.0004; sun.shadow.normalBias = .12;
 scene.add(sun); scene.add(sun.target);
@@ -70,6 +71,11 @@ const titans = titanSpawns.map(([x, z, scale], i) => {
 const player = { position: new THREE.Vector3(0, 0, 74), velocity: new THREE.Vector3(), health: 100, gas: 100, energy: 100, form: 'human', grounded: true, invulnerable: 0, attackTime: 0, attackCooldown: 0, jumps: 0, grapple: null, strike: null };
 let mode = 'menu', yaw = 0, pitch = .2, elapsed = 0, menuTime = 0, kills = 0, notificationTime = 0, hudTime = 0, shake = 0, soundEnabled = false, audioContext, manualWasPlaying = false;
 const keys = new Set(), forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3(), cameraTarget = new THREE.Vector3(), desiredCamera = new THREE.Vector3();
+const touchControls = createTouchControls({
+  canvas, jump, attack, transform, resupply,
+  look: (dx, dy) => { yaw -= dx; pitch = THREE.MathUtils.clamp(pitch + dy, -.6, 1.12); },
+  grapple: held => { if (held) startGrapple(); else player.grapple = null; },
+});
 const lastCameraPlayer = player.position.clone();
 const raycaster = new THREE.Raycaster(), rayBox = new THREE.Box3(), scratch = new THREE.Vector3(), map = $('minimap').getContext('2d');
 const random = seededRandom(812);
@@ -143,19 +149,20 @@ function transformationEffect() {
 function transform() {
   if (mode !== 'playing') return;
   if (player.form === 'human') {
-    if (player.energy < 35) { notify('Transformation needs 35% charge. Defeat Titans or visit a supply station.'); return; }
+    if (player.energy < 35) { notify('Need 35% Titan charge'); return; }
     player.form = 'titan'; player.velocity.multiplyScalar(.2); player.grounded = false; player.invulnerable = 2;
     human.group.visible = false; attackTitan.group.visible = true; document.body.classList.add('titan-form');
-    notify('THE ATTACK TITAN · Click or F to punch. T to return to human form.', 5);
+    notify('Titan form', 2);
   } else {
     player.form = 'human'; player.position.y += 14; player.velocity.y = 8; player.grounded = false; player.invulnerable = 2;
     human.group.visible = true; attackTitan.group.visible = false; document.body.classList.remove('titan-form');
-    notify('Human form restored. Keep moving, Eren.');
+    notify('Human form', 2);
   }
   player.grapple = null; player.strike = null; transformationEffect(); updateHUD();
 }
 
 function resetGame() {
+  touchControls.reset();
   player.position.set(0, 0, 74); player.velocity.set(0, 0, 0); player.health = player.gas = player.energy = 100;
   player.form = 'human'; player.grounded = true; player.invulnerable = 3; player.jumps = 0; player.grapple = player.strike = player.pendingPunch = null; player.combo = 0; player.attackTime = player.attackCooldown = 0;
   yaw = 0; pitch = .22; elapsed = kills = 0; keys.clear(); particles.length = 0;
@@ -166,22 +173,26 @@ function resetGame() {
 }
 function requestMouse() {
   document.activeElement?.blur();
+  if (touchDevice) return;
   try { const result = canvas.requestPointerLock?.(); result?.catch(() => {}); } catch { /* Arrow keys provide a camera fallback. */ }
 }
 function deploy() {
   resetGame(); mode = 'playing'; document.body.classList.add('playing');
-  $('menu').hidden = $('menu-portrait').hidden = $('menu-footer').hidden = $('pause').hidden = true; $('hud').hidden = false;
+  touchControls.setEnabled(true);
+  $('menu').hidden = $('menu-footer').hidden = $('pause').hidden = true; $('hud').hidden = false;
   camera.position.set(0, 5, 86); camera.lookAt(0, 2, 65); requestMouse();
   lastCameraPlayer.copy(player.position);
-  notify('TROST HAS BEEN BREACHED · Use E to grapple. T unleashes the Attack Titan.', 7);
+  $('notification').classList.remove('visible'); notificationTime = 0;
 }
 function pauseGame() {
   if (mode !== 'playing') return; mode = 'paused'; keys.clear(); player.grapple = null; $('pause').hidden = false;
+  touchControls.setEnabled(false);
   document.exitPointerLock?.();
 }
-function resumeGame() { if (mode !== 'paused') return; mode = 'playing'; $('pause').hidden = true; requestMouse(); }
+function resumeGame() { if (mode !== 'paused') return; mode = 'playing'; touchControls.setEnabled(true); $('pause').hidden = true; requestMouse(); }
 function endGame(won) {
   mode = won ? 'won' : 'lost'; keys.clear(); player.grapple = null; document.exitPointerLock?.();
+  touchControls.setEnabled(false);
   $('pause-title').textContent = won ? 'Trost stands. Because of you.' : 'Rise again, Eren.';
   $('pause-copy').textContent = won ? `All ${titans.length} Titans eliminated in ${Math.floor(elapsed / 60)}m ${Math.floor(elapsed % 60)}s. Humanity lives to see another day.` : `${kills} of ${titans.length} Titans eliminated. Use rooftops to stay safe, and visit green supply stations to recover.`;
   $('resume').hidden = true; $('pause').hidden = false;
@@ -191,9 +202,15 @@ function openManual() {
   if (manualWasPlaying) pauseGame(); $('manual').hidden = false;
 }
 function closeManual() { $('manual').hidden = true; if (manualWasPlaying) resumeGame(); manualWasPlaying = false; }
-$('deploy').addEventListener('click', deploy); $('resume').addEventListener('click', resumeGame); $('restart').addEventListener('click', deploy);
-$('return-menu').addEventListener('click', () => { mode = 'menu'; $('pause').hidden = $('hud').hidden = true; $('menu').hidden = $('menu-portrait').hidden = $('menu-footer').hidden = false; document.body.classList.remove('playing', 'titan-form'); resetGame(); });
-$('audio-button').addEventListener('click', enableSound); $('help-button').addEventListener('click', openManual); $('close-manual').addEventListener('click', closeManual);
+$('deploy').addEventListener('click', () => {
+  // Start audio within the Play gesture so mobile browsers allow playback.
+  if (!soundEnabled) enableSound();
+  deploy();
+});
+$('resume').addEventListener('click', resumeGame); $('restart').addEventListener('click', deploy);
+$('return-menu').addEventListener('click', () => { mode = 'menu'; touchControls.setEnabled(false); $('pause').hidden = $('hud').hidden = true; $('menu').hidden = $('menu-footer').hidden = false; document.body.classList.remove('playing', 'titan-form'); resetGame(); });
+$('pause-button').addEventListener('click', pauseGame);
+$('audio-button').addEventListener('click', enableSound); $('help-button').addEventListener('click', openManual); $('menu-help').addEventListener('click', openManual); $('close-manual').addEventListener('click', closeManual);
 window.addEventListener('keydown', event => {
   if (event.target instanceof HTMLButtonElement && (event.code === 'Space' || event.code === 'Enter')) return;
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) event.preventDefault();
@@ -208,11 +225,11 @@ window.addEventListener('keydown', event => {
   if (event.code === 'KeyE') startGrapple();
 });
 window.addEventListener('keyup', event => { keys.delete(event.code); if (event.code === 'KeyE') player.grapple = null; });
-canvas.addEventListener('mousedown', event => { if (mode !== 'playing') return; if (document.pointerLockElement !== canvas) requestMouse(); if (event.button === 0) attack(); if (event.button === 2) { keys.add('MouseRight'); startGrapple(); } });
+canvas.addEventListener('mousedown', event => { if (mode !== 'playing' || touchDevice) return; if (document.pointerLockElement !== canvas) requestMouse(); if (event.button === 0) attack(); if (event.button === 2) { keys.add('MouseRight'); startGrapple(); } });
 window.addEventListener('mouseup', event => { if (event.button === 2) { keys.delete('MouseRight'); player.grapple = null; } });
 canvas.addEventListener('contextmenu', event => event.preventDefault());
 window.addEventListener('mousemove', event => { if (mode === 'playing' && document.pointerLockElement === canvas) { yaw -= event.movementX * .0022; pitch = THREE.MathUtils.clamp(pitch + event.movementY * .0017, -.6, 1.12); } });
-document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && mode === 'playing') pauseGame(); });
+document.addEventListener('pointerlockchange', () => { if (!touchDevice && !document.pointerLockElement && mode === 'playing') pauseGame(); });
 window.addEventListener('blur', () => { keys.clear(); if (mode === 'playing') pauseGame(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'playing') pauseGame(); });
 
@@ -256,7 +273,7 @@ function startGrapple() {
       if (dist < 95 && dist > 7 && alignment > .35 && currentScore < score) { score = currentScore; point = p; }
     }
   }
-  if (point) { player.grapple = { point }; sound('hook'); } else notify('No anchor in reach. Aim toward a rooftop or Titan.');
+  if (point) { player.grapple = { point }; sound('hook'); } else notify('No anchor in reach');
 }
 function attack() {
   if (mode !== 'playing' || player.attackCooldown > 0) return;
@@ -264,14 +281,14 @@ function attack() {
   player.attackTime = .48; player.attackCooldown = player.form === 'titan' ? .7 : .55;
   const isTitan = player.form === 'titan'; if (!isTitan) sound('slash');
   const target = getTarget(isTitan ? 24 : 46, true);
-  if (!target) { notify(isTitan ? 'Move closer and face a Titan to land a punch.' : 'Face a Titan and grapple closer. Strike within 46 m.', 1.8); return; }
+  if (!target) { notify(isTitan ? 'Move closer to a Titan' : 'Get closer · strike within 46 m', 1.8); return; }
   if (isTitan) {
     const distance = Math.hypot(target.titan.group.position.x - player.position.x, target.titan.group.position.z - player.position.z);
     if (distance < 20 && Math.abs(target.titan.group.position.y - player.position.y) < 18) {
       player.pendingPunch = { titan: target.titan, remaining: .25 };
-    } else notify('Close the distance. Punch within 20 m.', 1.5);
+    } else notify('Get closer · punch within 20 m', 1.5);
   } else {
-    if (player.gas < 6) { notify('ODM gas depleted. Visit a green supply station.'); return; }
+    if (player.gas < 6) { notify('Gas empty · find a green supply station'); return; }
     player.gas -= 6; player.invulnerable = .9; player.grapple = null;
     const behind = new THREE.Vector3(Math.sin(target.titan.group.rotation.y), 0, Math.cos(target.titan.group.rotation.y)).multiplyScalar(target.titan.scale * .35);
     const end = target.point.clone().add(behind);
@@ -280,7 +297,7 @@ function attack() {
     for (const b of world.colliders) {
       rayBox.min.set(b.x - b.w / 2, 0, b.z - b.d / 2); rayBox.max.set(b.x + b.w / 2, b.h - 1, b.z + b.d / 2);
       const hit = strikeRay.intersectBox(rayBox, scratch);
-      if (hit && hit.distanceTo(player.position) < distance - 3) { notify('Your strike is blocked. Grapple above the rooftops.'); return; }
+      if (hit && hit.distanceTo(player.position) < distance - 3) { notify('Strike blocked · get above the rooftops'); return; }
     }
     player.strike = { titan: target.titan, from: player.position.clone(), to: end, time: 0 }; player.grounded = false;
   }
@@ -290,7 +307,7 @@ function killTitan(t) {
   player.energy = Math.min(100, player.energy + (player.form === 'human' ? 18 : 4));
   player.gas = Math.min(100, player.gas + 6);
   burst(t.group.position.clone().add(new THREE.Vector3(0, t.scale * 1.8, 0)), 0xffdeab, 60, 14, 1.8);
-  sound('kill'); shake = .55; notify(`${player.form === 'human' ? 'NAPE STRIKE' : 'TITAN ELIMINATED'} · ${kills} / ${titans.length} eliminated`, 3);
+  sound('kill'); shake = .55; notify(player.form === 'human' ? 'Nape strike' : 'Titan eliminated', 1.5);
   if (kills === titans.length) endGame(true);
 }
 function damage(amount) {
@@ -301,8 +318,8 @@ function damage(amount) {
 }
 function resupply() {
   if (world.supplies.some(s => Math.hypot(s.x - player.position.x, s.z - player.position.z) < 11 && player.position.y < 6)) {
-    player.health = player.gas = 100; player.energy = 100; sound('refill'); burst(player.position, 0xa3eac0, 40, 6, 1); notify('RESUPPLIED · Health, ODM gas, and transformation charge restored.');
-  } else notify('Move within 11 m of a green supply station, then press R.');
+    player.health = player.gas = 100; player.energy = 100; sound('refill'); burst(player.position, 0xa3eac0, 40, 6, 1); notify('Fully resupplied');
+  } else notify('Find a green supply station');
 }
 
 function resolvePosition(position, previous, radius, height, canLand = true) {
@@ -328,7 +345,7 @@ function updatePlayer(dt) {
       if (isTitan && t.alive && t.group.position.distanceTo(player.position) < 20) {
         t.hp -= 52; t.cooldown = 1.3; shake = .42; sound('hit');
         burst(t.group.position.clone().add(new THREE.Vector3(0, t.scale * 1.45, 0)), 0xffca91, 35, 15, .8);
-        if (t.hp <= 0) killTitan(t); else notify('DIRECT HIT · Strike again to finish the Titan.', 1.4);
+        if (t.hp <= 0) killTitan(t); else notify('Direct hit', 1.4);
       }
       player.pendingPunch = null;
     }
@@ -336,8 +353,12 @@ function updatePlayer(dt) {
   if (keys.has('ArrowLeft')) yaw += dt * 1.7; if (keys.has('ArrowRight')) yaw -= dt * 1.7;
   if (keys.has('ArrowUp')) pitch = Math.max(-.6, pitch - dt); if (keys.has('ArrowDown')) pitch = Math.min(1.12, pitch + dt);
   forward.set(-Math.sin(yaw), 0, -Math.cos(yaw)); right.set(Math.cos(yaw), 0, -Math.sin(yaw)); move.set(0, 0, 0);
-  if (keys.has('KeyW')) move.add(forward); if (keys.has('KeyS')) move.sub(forward); if (keys.has('KeyD')) move.add(right); if (keys.has('KeyA')) move.sub(right); move.normalize();
-  const sprint = keys.has('ShiftLeft') || keys.has('ShiftRight'), speed = isTitan ? (sprint ? 23 : 15) : (sprint ? 8 : 1.3);
+  if (keys.has('KeyW')) move.add(forward); if (keys.has('KeyS')) move.sub(forward); if (keys.has('KeyD')) move.add(right); if (keys.has('KeyA')) move.sub(right);
+  move.addScaledVector(forward, touchControls.state.y).addScaledVector(right, touchControls.state.x);
+  // Every movement input sprints, including light joystick input past its dead zone.
+  if (move.lengthSq() > 0) move.normalize();
+  const boost = keys.has('ShiftLeft') || keys.has('ShiftRight') || touchControls.state.boost;
+  const speed = isTitan ? 23 : 8;
   const previous = player.position.clone();
   if (player.strike) {
     const s = player.strike; s.time += dt; const progress = Math.min(1, s.time / .32);
@@ -349,8 +370,8 @@ function updatePlayer(dt) {
       if (player.grapple) {
         const direction = player.grapple.point.clone().sub(player.position), distance = direction.length();
         if (distance > 2.7) {
-          const pull = direction.normalize().multiplyScalar(sprint ? 47 : 35); player.velocity.lerp(pull, 1 - Math.exp(-dt * 6)); player.velocity.addScaledVector(move, dt * 20);
-          player.grounded = false; player.gas = Math.max(0, player.gas - dt * (sprint ? 10 : 6));
+          const pull = direction.normalize().multiplyScalar(boost ? 47 : 35); player.velocity.lerp(pull, 1 - Math.exp(-dt * 6)); player.velocity.addScaledVector(move, dt * 20);
+          player.grounded = false; player.gas = Math.max(0, player.gas - dt * (boost ? 10 : 6));
           if (Math.random() < .5) burst(player.position, 0xd8e1da, 2, 2, .4);
         } else { player.velocity.multiplyScalar(.6); player.grapple = null; }
       }
@@ -442,7 +463,9 @@ function updateCamera(dt) {
   camera.position.lerp(desiredCamera, 1 - Math.exp(-dt * 7));
   if (shake > 0) { camera.position.x += (Math.random() - .5) * shake; camera.position.y += (Math.random() - .5) * shake; shake = Math.max(0, shake - dt * 2); }
   camera.lookAt(cameraTarget);
-  const targetFov = player.grapple ? 69 : titan ? 64 : 59;
+  const baseFov = player.grapple ? 69 : titan ? 64 : 59;
+  // Preserve more horizontal context when a phone is held upright.
+  const targetFov = Math.min(90, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(baseFov / 2)) / Math.min(1, camera.aspect))));
   camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, dt * 3); camera.updateProjectionMatrix();
   sun.position.copy(player.position).addScaledVector(sunPosition, 180); sun.target.position.copy(player.position);
 }
@@ -467,13 +490,18 @@ function updateHUD() {
   $('gas-bar').style.width = `${player.gas}%`; $('gas-value').textContent = Math.floor(player.gas);
   $('titan-bar').style.width = `${player.energy}%`;
   $('titan-value').textContent = player.form === 'titan' ? `${Math.ceil(player.energy * .45)}s` : player.energy >= 35 ? 'READY' : `${Math.floor(player.energy)}%`;
-  $('transform-label').textContent = player.form === 'titan' ? 'RETURN TO HUMAN' : 'TITAN TRANSFORMATION';
+  $('transform-label').textContent = player.form === 'titan' ? 'TIME' : 'TITAN';
   $('form-name').textContent = player.form === 'titan' ? 'THE ATTACK TITAN' : 'EREN YEAGER'; $('form-badge').textContent = player.form.toUpperCase();
   $('kill-count').textContent = `${kills} / ${titans.length}`; $('remaining-label').textContent = `${titans.length - kills} HOSTILES`;
   $('speed').firstElementChild.textContent = String(Math.round(Math.hypot(player.velocity.x, player.velocity.z) * 3.6)).padStart(2, '0');
   const headings = ['N', 'NW', 'W', 'SW', 'S', 'SE', 'E', 'NE']; $('heading').textContent = headings[THREE.MathUtils.euclideanModulo(Math.round(yaw / (Math.PI / 4)), 8)];
   const target = getTarget(110, true); $('crosshair').classList.toggle('targeted', !!target);
-  $('target-label').textContent = target ? `${target.titan.hp < 100 ? 'WOUNDED TITAN' : 'TITAN'} · ${Math.round(target.distance)} m${player.form === 'human' ? ' / E GRAPPLE' : ' / CLICK PUNCH'}` : '';
+  $('target-label').textContent = target ? `${Math.round(target.distance)} m` : '';
+  $('touch-transform').textContent = player.form === 'titan' ? 'HUMAN' : 'TITAN';
+  $('touch-transform').setAttribute('aria-label', player.form === 'titan' ? 'Return to human form' : 'Transform into a Titan');
+  $('touch-transform').disabled = player.form === 'human' && player.energy < 35;
+  $('touch-attack').textContent = player.form === 'titan' ? 'PUNCH' : 'STRIKE';
+  document.querySelector('[data-touch-action="grapple"]').disabled = player.form === 'titan';
   drawMap();
 }
 
@@ -523,7 +551,7 @@ renderer.setAnimationLoop(frame);
 $('loading').style.opacity = '0'; setTimeout(() => $('loading').hidden = true, 700);
 
 // A read-only snapshot for smoke tests and browser diagnostics.
-window.getGameState = () => ({ mode, form: player.form, health: player.health, gas: Math.round(player.gas), energy: Math.round(player.energy), kills, position: player.position.toArray().map(v => +v.toFixed(2)), velocity: player.velocity.toArray().map(v => +v.toFixed(2)), grapple: !!player.grapple, grounded: player.grounded, elapsed: Math.round(elapsed), titans: titans.filter(t => t.alive).map(t => ({ id: t.id, hp: t.hp, position: t.group.position.toArray().map(v => +v.toFixed(1)) })), world: { buildings: world.buildings.length, diameter: world.wallRadius * 2 }, render: { backend: renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl2', frameMs: +averageFrame.toFixed(1), pixelRatio: renderer.getPixelRatio(), shadowSize: sun.shadow.mapSize.x, calls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles } });
+window.getGameState = () => ({ mode, input: { touch: touchDevice, move: { x: +touchControls.state.x.toFixed(2), y: +touchControls.state.y.toFixed(2) }, boost: touchControls.state.boost, yaw: +yaw.toFixed(3), pitch: +pitch.toFixed(3) }, attackTime: +player.attackTime.toFixed(2), form: player.form, health: player.health, gas: Math.round(player.gas), energy: Math.round(player.energy), kills, position: player.position.toArray().map(v => +v.toFixed(2)), velocity: player.velocity.toArray().map(v => +v.toFixed(2)), grapple: !!player.grapple, grounded: player.grounded, elapsed: Math.round(elapsed), titans: titans.filter(t => t.alive).map(t => ({ id: t.id, hp: t.hp, position: t.group.position.toArray().map(v => +v.toFixed(1)) })), world: { buildings: world.buildings.length, diameter: world.wallRadius * 2 }, render: { backend: renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl2', frameMs: +averageFrame.toFixed(1), pixelRatio: renderer.getPixelRatio(), shadowSize: sun.shadow.mapSize.x, calls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles } });
 
 // Development-only rig diagnostics for repeatable movement regression checks.
 if(import.meta.env.DEV)window.__motionDebug={human,scene,camera,renderer,player};

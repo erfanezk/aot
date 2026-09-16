@@ -2,10 +2,10 @@
   "generator": "Blender 5.2.1 LTS",
   "characters": {
     "eren": {
-      "triangles": 53976,
+      "triangles": 53977,
       "meshes": 19,
       "bones": 39,
-      "bytes": 13132752,
+      "bytes": 13265244,
       "source": "eren.blend",
       "animations": [
         "eren_attack",
@@ -20,10 +20,10 @@
       ]
     },
     "attack-titan": {
-      "triangles": 55997,
+      "triangles": 55996,
       "meshes": 10,
       "bones": 38,
-      "bytes": 6355232,
+      "bytes": 6434804,
       "source": "attack-titan.blend",
       "animations": [
         "attack-titan_attack",
@@ -36,10 +36,10 @@
       ]
     },
     "pure-titan": {
-      "triangles": 39998,
-      "meshes": 10,
+      "triangles": 39997,
+      "meshes": 9,
       "bones": 38,
-      "bytes": 5663312,
+      "bytes": 4762660,
       "source": "pure-titan.blend",
       "animations": [
         "pure-titan_attack",

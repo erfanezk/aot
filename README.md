@@ -8,10 +8,14 @@ Swing through Trost, strike Titan napes, and turn into the Attack Titan when thi
 
 **[Play now →](https://erfanezk.github.io/aot/)**
 
-Bring a keyboard, a mouse, and questionable amounts of courage.
+Play on desktop or on your phone, with questionable amounts of courage.
 
-- **WASD** — move · **Mouse** — look
-- **Space** — jump · **Shift** — boost
+On mobile, drag the **left stick** to sprint automatically. **Drag the world** to look around. Hold **Grapple** to fly; drag that same thumb to aim while grappling. Tap **Jump**, **Strike**, **Titan**, or **Supply** for the other actions. Use **Ⅱ** to pause. Both portrait and landscape work; landscape gives you more room.
+
+Desktop controls:
+
+- **WASD** — sprint · **Mouse** — look
+- **Space** — jump · **Shift** — boost while grappling
 - **E / Right click** — grapple
 - **F / Left click** — attack
 - **T** — unleash your inner Titan

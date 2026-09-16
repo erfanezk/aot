@@ -30,3 +30,11 @@ npm run build
 The generator is `tools/blender/build_characters.py`. Source projects are `assets/blender/{eren,attack-titan,pure-titan}.blend`; exports are under `public/models/`. Blender full-body and portrait renders are in `output/blender/`. Re-render the title portrait with Blender's background Python runner and `tools/blender/render_menu_portrait.py`.
 
 `models:check` validates the real exported files, including texture embedding, masked hair materials, facial texture maps, geometry/download budgets, normalized skin weights, skeleton cloning and animation tracks. `walk:check` samples the exported walk and sprint for foot placement and motion continuity. Original GLBs and close-up renders are retained in `output/realism-before/` for comparison.
+
+## Character design update
+
+The September 16 design update replaces the straight hair fringe with solid tapered locks and overlapping strand cards. Eren has a leaner lower face, stronger brows, greener irises, warmer Scout canvas, lighter trousers, sleeve insignia, a shaped shoulder yoke and a gathered green cloak collar. Floating shoulder seams were removed.
+
+The Attack Titan has a stronger jaw and cheek silhouette, longer parted hair, curved rows of exposed teeth inside a mouth opening, and deeper pectoral and sternum relief. The Pure Titan uses shorter uneven hair and a softer torso, without the Attack Titan's exposed cheek sinews. Both Titan bodies have a welded, weighted neck transition to close the old opening around the extracted head.
+
+The editable `.blend` files and embedded-texture `.glb` exports are rebuilt together. Skeletons, gameplay scale, animation names and the existing triangle/download limits are retained. Current counts are in `public/models/manifest.json`. Review renders are in `output/blender/`; the preceding design renders are retained in `output/design-before/`.

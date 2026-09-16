@@ -309,6 +309,17 @@ def reference_head(skin, titan=False):
             py-=.009*math.exp(-((pz-2.22)/.022)**2)*math.exp(-((abs(px)-.049)/.035)**2)
             px*=1+.10*math.exp(-((pz-2.095)/.06)**2)
             py+=.004*math.exp(-((pz-2.12)/.035)**2)*math.exp(-((abs(px)-.07)/.025)**2)
+            # A strong cheek plane and projecting chin distinguish the Titan face.
+            jaw=math.exp(-((pz-2.073)/.035)**2)
+            px*=1+(.16 if CURRENT=='attack-titan' else .08)*jaw
+            py-=.013*jaw*math.exp(-(px/.075)**4)
+            py+=.009*math.exp(-((abs(px)-.074)/.024)**2-((pz-2.138)/.027)**2)
+        if not titan:
+            # A leaner, younger lower face; keep eye and mouth loops intact.
+            px*=1-.075*math.exp(-((pz-2.075)/.039)**2)
+        if CURRENT=='attack-titan' and abs(px)>.106 and 2.14<pz<2.245:
+            ear=math.exp(-((pz-2.208)/.038)**2)*min(1,(abs(px)-.106)/.026)
+            px+=math.copysign(.019*ear,px); pz+=.022*ear
         return (px,py,pz)
     def build_mesh(name,polys,mat,subdiv=None):
         if subdiv is None: subdiv=1
@@ -319,6 +330,13 @@ def reference_head(skin, titan=False):
             for index,original in enumerate(used):
                 if coords[original][1]<6.1: verts[index]=(verts[index][0],verts[index][1],1.903)
         return surface(name,verts,[tuple(lookup[i] for i in f) for f in polys],mat,'Head',subdiv=subdiv)
+    if titan:
+        # Open the mouth in the actual face instead of pasting teeth over the lips.
+        def in_mouth(poly):
+            p=sum((Vector(convert(coords[i])) for i in poly),Vector())/len(poly)
+            smile=.013*(abs(p.x)/.09)**2
+            return p.y<-.085 and (p.x/.082)**2+((p.z-2.111-smile)/.0185)**2<1
+        faces=[poly for poly in faces if not in_mouth(poly)]
     head=build_mesh('Anatomical facial topology',faces,facial_material(skin))
     activate(head)
     detail=head.modifiers.new('Facial detail budget','DECIMATE'); detail.ratio=.32 if CURRENT=='pure-titan' else .52
@@ -340,7 +358,7 @@ def reference_head(skin, titan=False):
         # polygon boundary around the philtrum after mesh reduction.
         poly.material_index=0
     sclera=material('Warm sclera',(.67,.64,.59),roughness=.22)
-    iris=material('Jade iris',(.060,.125,.074),roughness=.29,emission=.05 if titan else 0)
+    iris=material('Jade iris',(.075,.23,.13),roughness=.29,emission=.25 if CURRENT=='attack-titan' else 0)
     pupil=material('Pupil',(.002,.003,.002),roughness=.16)
     if not iris.get('iris_detail'):
         n=256; vv,uu=np.mgrid[0:n,0:n]/(n-1)*2-1
@@ -348,7 +366,7 @@ def reference_head(skin, titan=False):
         fibers=.75+.16*np.sin(angle*61+radius*18)+.09*np.sin(angle*103-radius*27)
         limbal=1-.75*np.exp(-((radius-.91)/.08)**2)
         amber=np.exp(-((radius-.39)/.12)**2)
-        rgb=np.array([.10,.18,.10])[None,None,:]*(fibers*limbal)[:,:,None]
+        rgb=np.array([.11,.29,.19])[None,None,:]*(fibers*limbal)[:,:,None]
         rgb[:,:,0]+=.045*amber
         tex=iris.node_tree.nodes.new('ShaderNodeTexImage'); tex.image=image_from_array('Jade radial iris',rgb)
         iris.node_tree.links.new(tex.outputs['Color'],iris.node_tree.nodes.get('Principled BSDF').inputs['Base Color'])
@@ -357,11 +375,11 @@ def reference_head(skin, titan=False):
         build_mesh('Anatomical eyeball',polys,sclera,subdiv=1)
         side=1 if 'l-eye' in name else -1
         x=side*.043085
-        eye=ellipsoid('Jade iris',(x,-.1205,2.191),(.0076,.0021,.0076),iris,'Head',segments=32)
+        eye=ellipsoid('Jade iris',(x,-.1205,2.191),(.0087,.0021,.0087),iris,'Head',segments=32)
         uv=eye.data.uv_layers.active
         for loop in eye.data.loops:
             p=eye.data.vertices[loop.vertex_index].co
-            uv.data[loop.index].uv=(p.x/.0152+.5,p.z/.0152+.5)
+            uv.data[loop.index].uv=(p.x/.0174+.5,p.z/.0174+.5)
         ellipsoid('Pupil',(x,-.1224,2.191),(.0028,.0007,.0029),pupil,'Head',segments=24)
     return head
 
@@ -379,10 +397,10 @@ def face_details(skin,titan=False,attack=False):
     hair.node_tree.nodes.get('Principled BSDF').inputs['Roughness'].default_value=.87
     for side in [-1,1]:
         points=[]
-        for x,z in [(side*.021,2.214),(side*.047,2.226),(side*.079,2.221)]:
+        for x,z in [(side*.019,2.205 if attack else 2.213),(side*.046,2.219 if attack else 2.225),(side*.081,2.224)]:
             hit,point,normal,index=face.ray_cast(Vector((x,-1,z)),Vector((0,1,0)))
             points.append((x,point.y-.002 if hit else -.14,z))
-        tube('Eyebrow',points,.0014,hair,'Head',radii=[.4,1,.08])
+        tube('Eyebrow',points,.0032 if titan else .0023,hair,'Head',radii=[.65,1,.08])
         for j in range(18):
             t=j/17; p=Vector(points[0]).lerp(Vector(points[1]),min(t*2,1)) if t<.5 else Vector(points[1]).lerp(Vector(points[2]),(t-.5)*2)
             tube('Individual brow hair',[p,p+Vector((side*.002,-.0005,.0026)),p+Vector((side*.003,-.0003,.004))],.00025,hair,'Head',radii=[.8,1,.05])
@@ -391,59 +409,89 @@ def face_details(skin,titan=False,attack=False):
         mouth=material('Mouth interior',(.035,.009,.007),roughness=.8)
         tissue=material('Titan facial sinew',(.24,.075,.046),'skin',roughness=.76)
         # The Attack Titan's exposed teeth are modeled across the lower face.
-        ellipsoid('Titan jaw recess',(0,-.136,2.111),(.071,.007,.018),mouth,'Head')
+        ellipsoid('Titan jaw recess',(0,-.104,2.116),(.085,.013,.022),mouth,'Head')
         for row in [-1,1]:
-            for j in range(12):
-                x=(j-5.5)*.011
-                block('Titan tooth',(x,-.145+(abs(x)/.07)**2*.013,2.111+row*.0065),(.009,.009,.011),teeth,'Head',bevel=.002)
+            for j in range(14):
+                x=(j-6.5)*.0115; edge=abs(x)/.081
+                h=.015 if j in [3,10] and attack else .013
+                block('Titan tooth',(x,-.139+edge**2*.030,2.111+row*.007+.013*edge**2),(.0105,.012,h),teeth,'Head',bevel=.0015,rotation=(0,0,-x*3))
         for side in [-1,1]:
-            for j in range(3): tube('Facial sinew',[(side*(.061+j*.007),-.114+j*.007,2.145),(side*(.071+j*.006),-.114+j*.007,2.115),(side*(.055+j*.006),-.11+j*.007,2.081)],.0027,tissue,'Head')
-    # Close-fitting hair cap with many swept, tapered locks and fine striations.
-    hair2=material('Chestnut highlights',(.09,.049,.027),'hair',roughness=.79)
-    hair3=material('Chestnut shadow',(.029,.016,.011),'hair',roughness=.82)
+            if attack:
+                for j in range(3): tube('Facial sinew',[(side*(.075+j*.006),-.111+j*.006,2.163),(side*(.086+j*.004),-.107+j*.006,2.126),(side*(.065+j*.006),-.116+j*.006,2.078)],.0032,tissue,'Head',radii=[.2,1,.25])
+            # Raised cheek planes frame the exposed jaw, with a dark lower eyelid.
+            tube('Titan cheek ridge',[(side*.070,-.112,2.173),(side*.097,-.086,2.150),(side*.096,-.071,2.120)],.007,skin,'Head',radii=[.2,1,.12])
+            if attack: tube('Lower eye contour',[(side*.025,-.118,2.184),(side*.044,-.120,2.180),(side*.061,-.111,2.190)],.0017,tissue,'Head',radii=[.1,1,.05])
+    build_hair(hair,titan,attack)
+
+
+def build_hair(hair,titan,attack):
+    """An authored clump silhouette with fine masked fibers over the solid volume."""
+    cards=strand_material()
     verts=[]; faces=[]; count=48; rows=12
     for j in range(rows):
         v=j/(rows-1)
         for i in range(count):
-            a=i/count*math.tau
-            bottom=(1.99 if math.cos(a)>-.25 else 2.263) if attack else (2.18 if math.cos(a)>-.25 else 2.263)
-            endphi=math.acos(max(-1,min(1,(bottom-2.20)/.168)))
-            phi=.025+v*(endphi-.025)
-            verts.append((math.sin(a)*math.sin(phi)*(.142 if titan else .129),-.007+math.cos(a)*math.sin(phi)*.151,2.20+math.cos(phi)*.168))
+            a=i/count*math.tau; front=math.cos(a)<-.25
+            # A raised, irregular hairline leaves room for separated pointed bangs.
+            bottom=(2.292+.012*math.sin(a*5)) if front else (2.09 if attack else 2.175)
+            if titan and not attack: bottom+=.032*math.sin(a*3+.5)
+            endphi=math.acos(max(-1,min(1,(bottom-2.20)/.178)))
+            phi=.018+v*(endphi-.018)
+            verts.append((math.sin(a)*math.sin(phi)*(.145 if titan else .132),-.004+math.cos(a)*math.sin(phi)*.151,2.20+math.cos(phi)*.178))
     for j in range(rows-1):
         for i in range(count): faces.append((j*count+i,j*count+(i+1)%count,(j+1)*count+(i+1)%count,(j+1)*count+i))
-    surface('Scalp hair',verts,faces,hair,'Head',solidify=.004)
-    # Layered, tapered hair clumps: modeled silhouettes, not expensive tubular strands.
-    # Close the crown and overlap swept layers to avoid a visible bald pole.
-    surface('Hair crown',[(0,-.007,2.364)]+verts[:count],[(0,i+1,(i+1)%count+1) for i in range(count)],hair,'Head')
-    cards=strand_material()
-    locks=104 if attack else 84 if not titan else 64
-    for i in range(locks):
-        a=i/locks*math.tau+random.uniform(-.13,.13)
-        front=math.cos(a)<-.28
-        root=Vector((.012+math.sin(a)*.036,math.cos(a)*.038,2.366+random.uniform(-.002,.013)))
-        middle=Vector((math.sin(a)*(.147 if titan else .13),-.006+math.cos(a)*.16,2.30+random.uniform(-.012,.022)))
-        endz=random.uniform(1.91,2.11) if attack and not front else random.uniform(2.13,2.23)
-        tip=Vector((math.sin(a+.18)*(.175 if attack else .148),math.cos(a+.18)*.159,endz))
-        if front:
-            tip=Vector((math.sin(a+.30)*.116,-.159,random.uniform(2.215,2.262)))
-            if attack: tip.x += .024*(1 if tip.x>0 else -1)
-        hv=[]; hf=[]; width=random.uniform(.007,.014)
-        for j in range(12):
-            t=j/11; center=(1-t)**2*root+2*t*(1-t)*middle+t*t*tip
+    surface('Scalp hair',verts,faces,hair,'Head',solidify=.003)
+    surface('Hair crown',[(0,-.004,2.378)]+verts[:count],[(0,i+1,(i+1)%count+1) for i in range(count)],hair,'Head')
+
+    def lock(name,root,middle,tip,width,mat,card=False):
+        root,middle,tip=map(Vector,(root,middle,tip)); hv=[]; hf=[]
+        rows=10; cols=4 if card else 6
+        for j in range(rows):
+            t=j/(rows-1); center=(1-t)**2*root+2*t*(1-t)*middle+t*t*tip
             tangent=(2*(1-t)*(middle-root)+2*t*(tip-middle)).normalized()
-            normal=Vector((math.sin(a),math.cos(a),.35)).normalized()
+            normal=Vector((center.x,center.y,.10)).normalized()
             across=tangent.cross(normal).normalized(); outward=across.cross(tangent).normalized()
-            taper=math.sin((.12+t*.88)*math.pi)**.7 if t<1 else .012
-            for k in range(4):
-                across_t=k/3*2-1
-                hv.append(center+across*(across_t*width*taper)+outward*((1-across_t**2)*width*.10))
-        for j in range(11):
-            for k in range(3): hf.append((j*4+k,j*4+k+1,(j+1)*4+k+1,(j+1)*4+k))
-        lock=surface('Swept fine hair card',hv,hf,cards,'Head')
-        uv=lock.data.uv_layers.new(name='Strand UV')
-        for loop in lock.data.loops:
-            vi=loop.vertex_index; uv.data[loop.index].uv=((vi%4)/3,(vi//4)/11)
+            taper=max(.009,math.sin((.14+t*.86)*math.pi)**.75)
+            for k in range(cols):
+                if card:
+                    u=k/(cols-1)*2-1
+                    offset=across*u*width*taper+outward*((1-u*u)*width*.18+.0015)
+                else:
+                    angle=k/cols*math.tau
+                    offset=(across*math.cos(angle)*width+outward*math.sin(angle)*width*.18)*taper
+                hv.append(center+offset)
+        for j in range(rows-1):
+            for k in range(cols-1 if card else cols):
+                k2=(k+1)%cols; hf.append((j*cols+k,j*cols+k2,(j+1)*cols+k2,(j+1)*cols+k))
+        obj=surface(name,hv,hf,mat,'Head')
+        if card:
+            uv=obj.data.uv_layers.new(name='Strand UV')
+            for loop in obj.data.loops:
+                vi=loop.vertex_index; uv.data[loop.index].uv=((vi%cols)/(cols-1),(vi//cols)/(rows-1))
+        return obj
+
+    locks=30 if attack else 24 if not titan else 19
+    for i in range(locks):
+        a=i/locks*math.tau+.09*math.sin(i*4.2); front=math.cos(a)<-.28
+        root=(math.sin(a)*.041,math.cos(a)*.041,2.376+.009*math.sin(i*1.7))
+        middle=(math.sin(a)*.149,math.cos(a)*.161,2.31+.016*math.sin(i*2.3))
+        if front:
+            # Eren's diagonal bangs and the Titan's parted, swept-back temples.
+            x=math.sin(a)*.132
+            if attack:
+                tip=(math.copysign(max(.052,abs(x)*1.22),x),-.152,2.255-.038*abs(math.sin(a)))
+            else:
+                tip=(x+.016,-.161,2.240+.031*math.sin(i*2.6))
+        else:
+            length=(1.97+.060*math.sin(i*2.1)) if attack else (2.135+.034*math.sin(i*1.9))
+            tip=(math.sin(a+.15)*(.186 if attack else .151),math.cos(a+.15)*(.184 if attack else .160),length)
+        width=.030 if attack else .024
+        lock('Tapered silhouette hair lock',root,middle,tip,width,hair)
+        lock('Swept fine hair card',root,middle,tip,width*.94,cards,True)
+        # Finer offset strands soften the clump edges without a straight fringe.
+        root2=Vector(root)+Vector((.004,0,.003)); tip2=Vector(tip)+Vector((.006,.001,.008))
+        lock('Swept fine hair card',root2,middle,tip2,width*.48,cards,True)
+    lock('Overlapping crown tuft',(-.025,.01,2.373),(.025,-.021,2.402),(.066,-.073,2.330),.023,hair)
 
 
 def titan_anatomy(skin,attack):
@@ -538,14 +586,19 @@ def titan_anatomy(skin,attack):
     mod=obj.modifiers.new('Anatomical subdivision','SUBSURF'); mod.levels=1; bpy.ops.object.modifier_apply(modifier=mod.name)
     for v in obj.data.vertices:
         x,y,z=v.co
+        if not attack and abs(x)<.32 and 1.13<z<1.66:
+            # Pure Titans have a softer, slightly distended torso silhouette.
+            belly=math.exp(-((z-1.36)/.21)**2)*math.exp(-(x/.27)**4)
+            v.co.y-=.036*belly*max(0,min(1,-y*8))
         if y<-.06 and 1.15<z<1.88 and abs(x)<.35:
             front=max(0,min(1,(-y-.06)/.08)); relief=0
             for side in [-1,1]:
-                relief+=.04*math.exp(-((x-side*.155)/.12)**2-((z-1.705)/.095)**2)
+                relief+=.052*math.exp(-((x-side*.155)/.12)**2-((z-1.705)/.095)**2)
                 for h in [1.29,1.39,1.49,1.58]: relief+=.023*math.exp(-((x-side*.073)/.048)**2-((z-h)/.034)**2)
             v.co.y-=relief*front*(1 if attack else .35)
             # Sternum, obliques and serratus connect the larger muscle masses.
-            detail=-.008*math.exp(-(x/.020)**2-((z-1.65)/.22)**2)
+            detail=-.014*math.exp(-(x/.020)**2-((z-1.65)/.22)**2)
+            detail-=.009*math.exp(-((z-1.635)/.018)**2)*math.exp(-(x/.26)**4)
             for s in [-1,1]:
                 detail+=.011*math.exp(-((x-s*.215)/.043)**2-((z-1.44)/.18)**2)
                 for h in [1.55,1.62,1.69]:
@@ -554,20 +607,55 @@ def titan_anatomy(skin,attack):
         if y>.06 and 1.35<z<1.91:
             for s in [-1,1]:
                 v.co.y+=.012*math.exp(-((x-s*.16)/.10)**2-((z-1.73)/.12)**2)
+    # Bridge the cut body boundary into the neck. The old extracted surface left
+    # a visible jagged opening around the head, especially during a punch.
+    edges={}
+    for poly in obj.data.polygons:
+        ids=list(poly.vertices)
+        for a,b in zip(ids,ids[1:]+ids[:1]):
+            edge=tuple(sorted((a,b))); edges[edge]=edges.get(edge,0)+1
+    boundary=[edge for edge,n in edges.items() if n==1 and all(obj.data.vertices[i].co.z>1.78 for i in edge)]
+    ids=sorted({i for edge in boundary for i in edge}); index={old:new for new,old in enumerate(ids)}
+    neck=[obj.data.vertices[i].co.copy() for i in ids]
+    rings=5
+    for row in range(1,rings+1):
+        u=row/rings
+        for i in ids:
+            p=obj.data.vertices[i].co; a=math.atan2(p.x,p.y-.01)
+            target=Vector((math.sin(a)*.050,.01+math.cos(a)*.052,2.015))
+            point=p.lerp(target,1-(1-u)**3); point.z=p.z+(target.z-p.z)*u
+            neck.append(point)
+    n=len(ids)
+    if n:
+        bridge=surface('Continuous trapezius neck transition',neck,[(index[a]+row*n,index[b]+row*n,index[b]+(row+1)*n,index[a]+(row+1)*n) for row in range(rings) for a,b in boundary],skin,'SOURCE')
+        for group in obj.vertex_groups: bridge.vertex_groups.new(name=group.name)
+        for vi,original_index in enumerate(ids):
+            for row in range(rings+1):
+                u=row/rings
+                for group in obj.data.vertices[original_index].groups:
+                    name=obj.vertex_groups[group.group].name
+                    bridge.vertex_groups[name].add([vi+row*n],group.weight*(1-u),'REPLACE')
+                bridge.vertex_groups['Head'].add([vi+row*n],u,'ADD')
+        obj=join_objects([obj,bridge],'Retopologized anatomical body')
+        # Weld before reduction so the shared collar cannot split into a seam.
+        bm=bmesh.new(); bm.from_mesh(obj.data)
+        bmesh.ops.remove_doubles(bm,verts=list(bm.verts),dist=.00001)
+        bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces)); bm.to_mesh(obj.data); bm.free()
+        obj['rig_region']='SOURCE'
     face_details(skin,True,attack)
 
 
 def eren_uniform(skin):
-    shirt=material('Linen undershirt',(.49,.46,.365),'cloth',roughness=.78)
-    jacket=material('Weathered scout canvas',(.29,.195,.106),'cloth',roughness=.76)
+    shirt=material('Linen undershirt',(.66,.63,.52),'cloth',roughness=.84)
+    jacket=material('Weathered scout canvas',(.43,.275,.135),'cloth',roughness=.80)
     seam=material('Canvas stitching',(.41,.3,.171),roughness=.8)
-    trousers=material('Ivory cavalry twill',(.52,.50,.416),'cloth',roughness=.80)
+    trousers=material('Ivory cavalry twill',(.69,.67,.58),'cloth',roughness=.84)
     leather=material('Harness leather',(.07,.052,.039),'leather',roughness=.62)
     boot=material('Worn riding boots',(.053,.043,.033),'leather',roughness=.58)
     metal=material('Brushed ODM steel',(.28,.32,.33),'metal',metallic=.85,roughness=.3)
     blade=material('Tempered blades',(.5,.55,.56),metallic=.93,roughness=.2)
     darkmetal=material('Gunmetal housings',(.065,.083,.086),metallic=.8,roughness=.36)
-    cape=material('Survey green wool',(.07,.125,.093),'cloth',roughness=.86)
+    cape=material('Survey green wool',(.055,.19,.10),'cloth',roughness=.88)
     white=material('Emblem ivory thread',(.62,.64,.55),'cloth',roughness=.9)
     blue=material('Emblem blue thread',(.055,.17,.24),'cloth',roughness=.86)
     ring_surface('Trouser pelvis',[(1.0,.072,.087,0),(1.045,.166,.124,.007),(1.10,.200,.135,.007),(1.173,.201,.128,0)],trousers,segments=40)
@@ -592,7 +680,17 @@ def eren_uniform(skin):
         block('Pocket flap',(s*.173,-.193,1.69),(.122,.013,.027),jacket,'Torso',bevel=.004)
         ellipsoid('Pocket stud',(s*.173,-.203,1.683),(.006,.003,.006),metal,'Torso',segments=12)
         tube('Jacket opening seam',[(s*.039,-.154,1.32),(s*.046,-.158,1.53),(s*.055,-.16,1.72)],.0021,seam,'Torso')
-        tube('Shoulder seam',[(s*.11,-.098,1.914),(s*.25,-.083,1.877),(s*.315,.004,1.836)],.0025,seam,'Torso')
+        yoke=[]; yoke_faces=[]
+        for row in range(7):
+            u=row/6; x=.074+.215*u
+            for col in range(7):
+                v=col/6
+                y=-.125+.245*v
+                z=1.927-.094*u-.032*(2*v-1)**2+.009*math.sin(u*math.pi)
+                yoke.append((s*x,y,z))
+        for row in range(6):
+            for col in range(6): yoke_faces.append((row*7+col,row*7+col+1,(row+1)*7+col+1,(row+1)*7+col))
+        surface('Tailored shoulder yoke',yoke,yoke_faces,jacket,'Torso',solidify=.004)
     ring_surface('Jacket back',[(1.31,.209,.115,.012),(1.5,.256,.149,.022),(1.72,.285,.149,.018),(1.85,.213,.112,.022)],jacket,'Torso')
     # Front slit of the back shell is masked by shirt and tailored lapels.
     block('Center linen placket',(0,-.154,1.58),(.075,.018,.49),shirt,'Torso',bevel=.008)
@@ -604,7 +702,7 @@ def eren_uniform(skin):
         for row in range(rings):
             z=1.17+row/(rings-1)*.72
             cx=float(np.interp(z,[1.17,1.40,1.64,1.80,1.89],[.378,.365,.333,.297,.287]))
-            rx=float(np.interp(z,[1.17,1.40,1.64,1.80,1.89],[.067,.082,.089,.106,.022]))
+            rx=float(np.interp(z,[1.17,1.40,1.64,1.80,1.89],[.061,.074,.083,.090,.022]))
             for col in range(sides):
                 a=col/sides*math.tau
                 wrinkle=.003*math.sin(z*105+math.cos(a)*2)*math.exp(-((z-1.43)/.15)**2)
@@ -614,6 +712,13 @@ def eren_uniform(skin):
         sleeve_faces.append(tuple((rings-1)*sides+i for i in range(sides)))
         surface('Tailored sleeve with compression folds',sleeve_verts,[tuple(reversed(f)) if s>0 else f for f in sleeve_faces],jacket)
         block('Sleeve cuff',(s*.377,-.004,1.185),(.137,.15,.047),jacket,'Forearm_'+tag,bevel=.015)
+        # Small sewn Scout insignia reads from the front and three-quarter view.
+        patch_x=s*.340; patch_y=-.097; patch_z=1.655
+        surface('Scout sleeve shield',[(patch_x-.036,patch_y,patch_z+.056),(patch_x+.036,patch_y,patch_z+.056),(patch_x+.032,patch_y,patch_z-.025),(patch_x,patch_y,patch_z-.05),(patch_x-.032,patch_y,patch_z-.025)],[(0,1,2,3,4)],leather,'UpperArm_'+tag,solidify=.002)
+        for wing in [-1,1]:
+            for feather in range(4):
+                x=patch_x+wing*.004; z=patch_z+.034-feather*.017
+                surface('Sleeve wing embroidery',[(x,patch_y-.003,z),(x+wing*.024,patch_y-.003,z+.012),(x+wing*.021,patch_y-.003,z-.007),(x,patch_y-.003,z-.019)],[(0,1,2,3)],blue if wing<0 else white,'UpperArm_'+tag)
         ellipsoid('Hand palm',(s*.385,-.017,1.108),(.046,.031,.071),skin,skin=True)
         for j in range(4): ellipsoid('Hand finger',(s*(.349+j*.021),-.028,1.054+abs(j-1.4)*.005),(.013,.019,.04),skin,skin=True,segments=16)
         ellipsoid('Thumb',(s*.337,-.027,1.115),(.015,.022,.04),skin,skin=True,rotation=(0,s*-.25,0),segments=16)
@@ -659,6 +764,16 @@ def eren_uniform(skin):
     for j in range(rows-1):
         for i in range(cols-1): faces.append((j*cols+i,j*cols+i+1,(j+1)*cols+i+1,(j+1)*cols+i))
     surface('Survey cloak',verts,faces,cape,'Cape',solidify=.006,subdiv=0)
+    # A gathered shoulder yoke turns the old flat cape top into a cloth collar.
+    collar=[]; collar_faces=[]
+    for j in range(7):
+        t=j/6
+        for i in range(25):
+            a=-math.pi*.72+i/24*math.pi*1.44
+            collar.append((math.sin(a)*(.092+t*.18),.025+math.cos(a)*(.10+t*.065),1.917-t*.12+.009*math.cos(a*6)*t))
+    for j in range(6):
+        for i in range(24): collar_faces.append((j*25+i,j*25+i+1,(j+1)*25+i+1,(j+1)*25+i))
+    surface('Gathered Scout cloak collar',collar,collar_faces,cape,'Cape',solidify=.004)
     tube('Cloak hem',[verts[(rows-1)*cols+i] for i in range(cols)],.004,cape,'Cape')
     for s in [-1,1]:
         for j in range(6):
@@ -979,7 +1094,7 @@ def main():
         bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete(use_global=False)
         for old_action in list(bpy.data.actions): bpy.data.actions.remove(old_action)
         titan=name!='eren'; attack=name=='attack-titan'
-        skin=material('Eren skin' if not titan else 'Titan skin' if attack else 'Pure Titan skin',(.56,.385,.28) if not titan else (.49,.29,.19) if attack else (.54,.405,.305),'skin',roughness=.63 if not titan else .74)
+        skin=material('Eren skin' if not titan else 'Titan skin' if attack else 'Pure Titan skin',(.70,.515,.39) if not titan else (.61,.39,.27) if attack else (.66,.49,.385),'skin',roughness=.67 if not titan else .74)
         print('MODELING',name,flush=True)
         if titan: titan_anatomy(skin,attack)
         else: eren_uniform(skin); eren_fabric_details()

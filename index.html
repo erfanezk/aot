@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#171d1b" />
     <meta name="description" content="A playable 3D Attack on Titan fan game. Defend Trost with ODM gear and unleash the Attack Titan." />
     <title>Wings of Freedom — Attack on Titan</title>
@@ -15,30 +15,42 @@
     <header class="masthead">
       <a class="brand" href="./" aria-label="Wings of Freedom home"><svg viewBox="0 0 44 52" aria-hidden="true"><path d="M22 2 3 10v25l19 15 19-15V10Z"/><path d="m9 12 11 8v22L9 32Zm26 0-11 8v22l11-10Z"/><path d="m10 17 10 7m-10 0 10 7m-10 0 10 7m15-21-11 7m11 0-11 7m11 0-11 7"/></svg><span>SURVEY<br/>CORPS</span></a>
       <div class="header-center"><i></i> WALL ROSE <span>/</span> TROST DISTRICT</div>
-      <div class="header-actions"><button id="audio-button" class="icon-button" aria-label="Enable music and sound" aria-pressed="false" aria-controls="background-music" title="Toggle Attack on Titan music and sound">♪<span id="audio-label">SOUND OFF</span></button><button id="help-button" class="icon-button" aria-label="Show field manual">?<span>FIELD MANUAL</span></button></div>
+      <div class="header-actions"><button id="pause-button" class="icon-button" aria-label="Pause game">Ⅱ<span>PAUSE</span></button><button id="audio-button" class="icon-button" aria-label="Enable music and sound" aria-pressed="false" aria-controls="background-music" title="Toggle Attack on Titan music and sound">♪<span id="audio-label">SOUND OFF</span></button><button id="help-button" class="icon-button" aria-label="Show field manual">?<span>FIELD MANUAL</span></button></div>
     </header>
     <audio id="background-music" src="/audio/_attack_on%20titan.mp3" loop preload="none"></audio>
-    <div id="menu-portrait" aria-hidden="true"><img src="/images/eren-menu.png" alt="" fetchpriority="high" /></div>
     <main id="menu">
       <div class="eyebrow">ATTACK ON TITAN</div>
       <h1>WINGS OF<br/><em>FREEDOM</em></h1>
-      <p class="intro">Defend Trost. Become a Titan.</p>
-      <button id="deploy" class="primary-button"><span>PLAY</span><span class="arrow">↗</span></button>
-      <a class="menu-studio" href="%BASE_URL%characters.html">Character studio <span>↗</span></a>
+      <p class="intro">Take back Trost.</p>
+      <button id="deploy" class="primary-button"><span>PLAY</span><span class="arrow" aria-hidden="true">↗</span></button>
+      <button id="menu-help" class="text-button">How to play</button>
     </main>
-    <footer id="menu-footer"><span>TROST DISTRICT <b> / </b> WALL ROSE</span><p>UNOFFICIAL FAN GAME</p></footer>
+    <footer id="menu-footer">UNOFFICIAL FAN GAME</footer>
     <section id="hud" hidden>
-      <div class="objective"><span class="label">OPERATION 01</span><h2>Reclaim Trost</h2><p>Eliminate the Titans inside the walls.</p><div class="objective-count"><i></i><strong id="kill-count">0 / 6</strong><span>TITANS ELIMINATED</span></div></div>
+      <div class="objective" aria-label="Titans eliminated"><div class="objective-count"><i></i><strong id="kill-count">0 / 6</strong><span>TITANS</span></div></div>
       <div id="compass"><span>W</span><span>·</span><span>NW</span><b>│</b><span id="heading">N</span><b>│</b><span>NE</span><span>·</span><span>E</span></div>
       <div id="crosshair"><i></i><b></b></div><div id="target-label"></div>
       <div id="notification" role="status"></div>
-      <div class="player-panel"><div class="player-id"><div class="portrait">E</div><div><small>SURVEY CORPS · SOLDIER</small><h3 id="form-name">EREN YEAGER</h3></div><span id="form-badge">HUMAN</span></div><div class="meter-row"><span>HEALTH</span><div class="meter"><i id="health-bar"></i></div><b id="health-value">100</b></div><div class="meter-row"><span>ODM GAS</span><div class="meter gas"><i id="gas-bar"></i></div><b id="gas-value">100</b></div><div class="transformation"><span class="key">T</span><div><span id="transform-label">TITAN TRANSFORMATION</span><div class="meter titan"><i id="titan-bar"></i></div></div><b id="titan-value">READY</b></div></div>
+      <div class="player-panel"><div class="player-id"><div class="portrait">E</div><div><small>SURVEY CORPS · SOLDIER</small><h3 id="form-name">EREN YEAGER</h3></div><span id="form-badge">HUMAN</span></div><div class="meter-row"><span>HP</span><div class="meter"><i id="health-bar"></i></div><b id="health-value">100</b></div><div class="meter-row"><span>GAS</span><div class="meter gas"><i id="gas-bar"></i></div><b id="gas-value">100</b></div><div class="transformation"><span class="key">T</span><div><span id="transform-label">TITAN</span><div class="meter titan"><i id="titan-bar"></i></div></div><b id="titan-value">READY</b></div></div>
       <div class="minimap-panel"><div><span>TROST DISTRICT</span><i id="remaining-label">6 HOSTILES</i></div><canvas id="minimap" width="210" height="180" aria-label="Minimap showing player and Titans"></canvas><div class="map-key"><span><i></i> YOU</span><span><i></i> TITAN</span><span><i></i> SUPPLY</span></div></div>
-      <div class="quick-controls"><span><kbd>W A S D</kbd> Move</span><span><kbd>SPACE</kbd> Jump</span><span><kbd>E</kbd> Grapple</span><span><kbd>CLICK</kbd> Attack</span><span><kbd>T</kbd> Transform</span><span><kbd>ESC</kbd> Pause</span></div>
+
       <div id="speed"><b>00</b><span>KM/H</span></div><div id="damage-flash"></div><div id="transform-flash"></div>
     </section>
+    <div id="touch-controls" aria-label="Touch game controls" hidden>
+      <div class="touch-move">
+        <button id="touch-boost" class="touch-button" data-touch-action="boost" aria-label="Hold to boost while grappling">BOOST <small>HOLD</small></button>
+        <div id="move-stick" role="group" aria-label="Movement joystick: drag to sprint"><div id="move-thumb"></div><span>MOVE · SPRINT</span></div>
+      </div>
+      <div class="touch-actions">
+        <button class="touch-button" data-touch-action="resupply" aria-label="Resupply near a supply station">SUPPLY</button>
+        <button id="touch-transform" class="touch-button" data-touch-action="transform" aria-label="Transform into a Titan">TITAN</button>
+        <button class="touch-button" data-touch-action="jump" aria-label="Jump or double jump">JUMP</button>
+        <button class="touch-button" data-touch-action="grapple" aria-label="Hold to grapple and drag to aim">GRAPPLE <small>HOLD</small></button>
+        <button id="touch-attack" class="touch-button" data-touch-action="attack" aria-label="Attack">STRIKE</button>
+      </div>
+    </div>
     <div id="pause" class="overlay" hidden><div class="modal pause-modal"><span class="label">TAKE A BREATH, SOLDIER</span><h2 id="pause-title">The battle can wait.</h2><p id="pause-copy">Your expedition is paused.</p><button id="resume" class="primary-button">RETURN TO BATTLE <span>↗</span></button><button id="restart" class="secondary-button">RESTART EXPEDITION</button><button id="return-menu" class="text-button">Return to title</button></div></div>
-    <div id="manual" class="overlay" hidden><div class="modal manual-modal"><button id="close-manual" class="close-button" aria-label="Close field manual">×</button><span class="label">SURVEY CORPS / TRAINING DIVISION</span><h2>Your field manual.</h2><p>Stay above the streets. Strike the nape. Keep moving.</p><div class="manual-grid"><div><kbd>W A S D</kbd><span>Move in the direction of the camera</span></div><div><kbd>MOUSE / ← →</kbd><span>Look around / turn camera</span></div><div><kbd>SHIFT</kbd><span>Sprint or boost while grappling</span></div><div><kbd>SPACE</kbd><span>Jump · double jump with ODM gas</span></div><div><kbd>E / RIGHT CLICK</kbd><span>Hold to grapple toward your aim</span></div><div><kbd>CLICK / F</kbd><span>Slash · aim near a Titan to strike its nape</span></div><div><kbd>T</kbd><span>Become the Attack Titan / revert</span></div><div><kbd>R</kbd><span>Refill gas and health near green supplies</span></div><div><kbd>ESC / P</kbd><span>Pause the expedition</span></div></div><div class="manual-note"><strong>THE POWER WITHIN</strong><p>Start with a full transformation charge. Titan form lasts 45 seconds. Punch nearby Titans to defeat them. Human nape kills restore charge. Supply stations restore health, gas, and charge.</p></div><p><a href="%BASE_URL%characters.html" style="color:#d9bb81">Inspect the Blender character models ↗</a></p><p class="desktop-note">Desktop keyboard and mouse recommended. Click the battlefield to capture your mouse; Escape releases it.</p></div></div>
+    <div id="manual" class="overlay" hidden><div class="modal manual-modal"><button id="close-manual" class="close-button" aria-label="Close field manual">×</button><span class="label">SURVEY CORPS / TRAINING DIVISION</span><h2>Your field manual.</h2><p>Stay above the streets. Strike the nape. Keep moving.</p><div class="manual-grid keyboard-manual"><div><kbd>W A S D</kbd><span>Sprint in the direction of the camera</span></div><div><kbd>MOUSE / ← →</kbd><span>Look around / turn camera</span></div><div><kbd>SHIFT</kbd><span>Boost while grappling</span></div><div><kbd>SPACE</kbd><span>Jump · double jump with ODM gas</span></div><div><kbd>E / RIGHT CLICK</kbd><span>Hold to grapple toward your aim</span></div><div><kbd>CLICK / F</kbd><span>Slash · aim near a Titan to strike its nape</span></div><div><kbd>T</kbd><span>Become the Attack Titan / revert</span></div><div><kbd>R</kbd><span>Refill gas and health near green supplies</span></div><div><kbd>ESC / P</kbd><span>Pause the expedition</span></div></div><div class="manual-grid touch-manual"><div><kbd>LEFT STICK</kbd><span>Sprint; push to the edge to boost while grappling</span></div><div><kbd>DRAG WORLD</kbd><span>Look around and aim</span></div><div><kbd>GRAPPLE</kbd><span>Hold to hook; drag the same thumb to aim; release to let go</span></div><div><kbd>JUMP / STRIKE</kbd><span>Jump twice for an ODM jump; strike to attack</span></div><div><kbd>TITAN / SUPPLY</kbd><span>Transform or refill near a green supply station</span></div><div><kbd>Ⅱ PAUSE</kbd><span>Take a break or restart your mission</span></div></div><div class="manual-note"><strong>THE POWER WITHIN</strong><p>Start with a full transformation charge. Titan form lasts 45 seconds. Punch nearby Titans to defeat them. Human nape kills restore charge. Supply stations restore health, gas, and charge.</p></div><p><a href="%BASE_URL%characters.html" style="color:#d9bb81">Inspect the Blender character models ↗</a></p><p class="desktop-note"><span class="keyboard-note">Click the battlefield to capture your mouse; Escape releases it.</span><span class="touch-note">Use both thumbs to move and look. Landscape gives you a wider view.</span></p></div></div>
     <div id="fatal" class="overlay" hidden><div class="modal"><h2>Unable to enter Trost.</h2><p id="fatal-message"></p><button onclick="location.reload()" class="primary-button">TRY AGAIN ↗</button></div></div>
     <script type="module" src="/src/main.js"></script>
   </body>
